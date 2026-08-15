@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thibitisha — Cross-Telco Trust Infrastructure | MVP Demo v1.0</title>
+<style>
+  :root {
+    --primary: #E31937;
+    --primary-dark: #B7152C;
+    --secondary: #1A1A2E;
+    --accent: #00C853;
+    --warning: #FF9100;
+    --danger: #FF1744;
+    --bg: #F5F7FA;
+    --card: #FFFFFF;
+    --text: #1A1A2E;
+    --text-muted: #6B7280;
+    --border: #E5E7EB;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+  .app-container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+  .header { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; background: var(--card); border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon { width: 40px; height: 40px; background: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 18px; }
+  .logo-text { font-size: 22px; font-weight: 800; color: var(--secondary); }
+  .logo-sub { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+  .nav-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+  .nav-tab { padding: 10px 20px; border-radius: 10px; border: none; background: transparent; color: var(--text-muted); font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 14px; }
+  .nav-tab.active { background: var(--primary); color: white; }
+  .nav-tab:hover:not(.active) { background: var(--bg); color: var(--text); }
+  .screen { display: none; animation: fadeIn 0.3s ease; }
+  .screen.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .card { background: var(--card); border-radius: 16px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid var(--border); }
+  .card-title { font-size: 14px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; }
+  .stat-value { font-size: 32px; font-weight: 800; color: var(--secondary); }
+  .stat-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+  .stat-change { font-size: 12px; font-weight: 600; margin-top: 6px; }
+  .stat-change.up { color: var(--accent); }
+  .stat-change.down { color: var(--danger); }
+  .btn { padding: 12px 24px; border-radius: 10px; border: none; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(227,25,55,0.3); }
+  .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--border); }
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; }
+  .form-input { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; transition: all 0.2s; background: var(--card); }
+  .form-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(227,25,55,0.1); }
+  .risk-meter { width: 100%; height: 12px; background: #E5E7EB; border-radius: 6px; overflow: hidden; margin: 12px 0; }
+  .risk-fill { height: 100%; border-radius: 6px; transition: width 0.6s ease, background 0.6s ease; }
+  .risk-fill.low { background: var(--accent); }
+  .risk-fill.medium { background: var(--warning); }
+  .risk-fill.high { background: var(--danger); }
+  .risk-fill.critical { background: linear-gradient(90deg, var(--danger), #8B0000); }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+  .badge-safe { background: #E8F5E9; color: var(--accent); }
+  .badge-warn { background: #FFF3E0; color: var(--warning); }
+  .badge-danger { background: #FFEBEE; color: var(--danger); }
+  .badge-platinum { background: linear-gradient(135deg, #E0E0E0, #BDBDBD); color: #424242; }
+  .badge-gold { background: linear-gradient(135deg, #FFF8E1, #FFE082); color: #F57F17; }
+  .log-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; margin-bottom: 8px; background: var(--bg); font-size: 13px; }
+  .log-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .log-icon.success { background: #E8F5E9; color: var(--accent); }
+  .log-icon.warn { background: #FFF3E0; color: var(--warning); }
+  .log-icon.danger { background: #FFEBEE; color: var(--danger); }
+  .signal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .signal-card { padding: 16px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); }
+  .signal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 4px; }
+  .signal-name { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+  .signal-status { font-size: 12px; font-weight: 700; }
+  .signal-status.ok { color: var(--accent); }
+  .signal-status.warn { color: var(--warning); }
+  .signal-status.danger { color: var(--danger); }
+  .signal-detail { font-size: 12px; color: var(--text-muted); }
+  .phone-mockup { max-width: 360px; margin: 0 auto; background: var(--secondary); border-radius: 32px; padding: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+  .phone-screen { background: var(--bg); border-radius: 24px; overflow: hidden; min-height: 520px; position: relative; }
+  .phone-notch { width: 120px; height: 24px; background: var(--secondary); border-radius: 0 0 16px 16px; margin: 0 auto; }
+  .phone-header { padding: 16px 20px; background: var(--card); border-bottom: 1px solid var(--border); }
+  .phone-body { padding: 20px; }
+  .phone-amount { font-size: 36px; font-weight: 800; text-align: center; margin: 20px 0; }
+  .phone-btn { width: 100%; padding: 16px; border-radius: 14px; border: none; font-weight: 700; font-size: 16px; cursor: pointer; margin-top: 12px; }
+  .phone-btn-primary { background: var(--primary); color: white; }
+  .phone-btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .merchant-card { display: flex; align-items: center; gap: 12px; padding: 16px; background: var(--card); border-radius: 14px; border: 1px solid var(--border); margin-bottom: 12px; }
+  .merchant-avatar { width: 48px; height: 48px; border-radius: 12px; background: var(--primary); display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 20px; flex-shrink: 0; }
+  .merchant-info { flex: 1; min-width: 0; }
+  .merchant-name { font-weight: 700; font-size: 15px; }
+  .merchant-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .thibitisha-check { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: #E8F5E9; border-radius: 12px; margin: 12px 0; font-size: 13px; font-weight: 600; color: var(--accent); }
+  .thibitisha-check.warn { background: #FFF3E0; color: var(--warning); }
+  .thibitisha-check.danger { background: #FFEBEE; color: var(--danger); }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hidden { display: none !important; }
+  .pulse { animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .timeline { position: relative; padding-left: 24px; }
+  .timeline::before { content: ''; position: absolute; left: 7px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+  .timeline-item { position: relative; padding-bottom: 16px; }
+  .timeline-dot { position: absolute; left: -20px; width: 14px; height: 14px; border-radius: 50%; background: var(--primary); border: 3px solid var(--card); }
+  .timeline-item.completed .timeline-dot { background: var(--accent); }
+  .timeline-item.failed .timeline-dot { background: var(--danger); }
+  .timeline-text { font-size: 13px; }
+  .timeline-time { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .chart-bar { display: flex; align-items: flex-end; gap: 8px; height: 120px; padding: 16px 0; }
+  .chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .chart-bar-fill { width: 100%; border-radius: 6px 6px 0 0; transition: height 0.5s ease; min-height: 4px; }
+  .chart-label { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+  .chart-value { font-size: 11px; font-weight: 700; }
+  .demo-scenario { padding: 12px 16px; border-radius: 10px; border: 2px solid var(--border); cursor: pointer; transition: all 0.2s; margin-bottom: 8px; }
+  .demo-scenario:hover { border-color: var(--primary); background: rgba(227,25,55,0.03); }
+  .demo-scenario.selected { border-color: var(--primary); background: rgba(227,25,55,0.06); }
+  .demo-scenario-title { font-weight: 700; font-size: 14px; }
+  .demo-scenario-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .live-tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: #E8F5E9; color: var(--accent); border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .live-tag::before { content: ''; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: pulse 2s infinite; }
+  .share-banner { background: var(--secondary); color: white; padding: 12px 24px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .share-banner a { color: var(--primary); font-weight: 700; text-decoration: none; }
+  .share-banner a:hover { text-decoration: underline; }
+  @media (max-width: 768px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .header { flex-direction: column; align-items: flex-start; }
+    .nav-tabs { width: 100%; overflow-x: auto; }
+    .phone-mockup { max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-container">
+  <div class="share-banner">
+    <div>
+      <strong>Thibitisha MVP Demo v1.0</strong> — Cross-Telco Trust Infrastructure for Kenya
+    </div>
+    <div style="font-size: 13px; opacity: 0.8;">
+      Built for Airtel Kenya Partnership | August 2026
+    </div>
+  </div>
+
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">T</div>
+      <div>
+        <div class="logo-text">Thibitisha</div>
+        <div class="logo-sub">Cross-Telco Trust Infrastructure — MVP Demo v1.0</div>
+      </div>
+    </div>
+    <div class="live-tag">LIVE DEMO</div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showScreen('dashboard')">🏦 Bank Dashboard</button>
+    <button class="nav-tab" onclick="showScreen('consumer')">📱 Consumer App</button>
+    <button class="nav-tab" onclick="showScreen('merchant')">🏪 Merchant Badge</button>
+    <button class="nav-tab" onclick="showScreen('analytics')">📊 Analytics</button>
+  </div>
+
+  <!-- BANK DASHBOARD SCREEN -->
+  <div id="dashboard" class="screen active" style="margin-top: 20px;">
+    <div class="grid-3" style="margin-bottom: 20px;">
+      <div class="card">
+        <div class="card-title">Verifications Today</div>
+        <div class="stat-value" id="stat-verifications">12,847</div>
+        <div class="stat-label">API calls processed</div>
+        <div class="stat-change up">↑ 23% vs yesterday</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Fraud Blocked</div>
+        <div class="stat-value" id="stat-blocked" style="color: var(--danger);">847</div>
+        <div class="stat-label">Transactions stopped</div>
+        <div class="stat-change up">↑ 41% vs yesterday</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Avg Response Time</div>
+        <div class="stat-value" id="stat-latency" style="color: var(--accent);">127ms</div>
+        <div class="stat-label">p99 latency</div>
+        <div class="stat-change up">↓ 12ms improvement</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🔍 Run Verification</div>
+        <div style="margin-bottom: 16px;">
+          <div class="form-label">Select Demo Scenario</div>
+          <div class="demo-scenario selected" onclick="selectScenario(this, 'safe')">
+            <div class="demo-scenario-title">✅ Safe Transaction — Regular Customer</div>
+            <div class="demo-scenario-desc">John Kamau sending KSh 5,000. No SIM swap, known device, nearby location.</div>
+          </div>
+          <div class="demo-scenario" onclick="selectScenario(this, 'simswap')">
+            <div class="demo-scenario-title">🚨 SIM Swap Detected — Fraud Attempt</div>
+            <div class="demo-scenario-desc">Mary Wanjiku's line swapped 2 hours ago. New device, 450km away from home.</div>
+          </div>
+          <div class="demo-scenario" onclick="selectScenario(this, 'merchant')">
+            <div class="demo-scenario-title">🏪 Merchant Verification — Till Payment</div>
+            <div class="demo-scenario-desc">Paying KSh 12,000 to ABC Electronics. Check merchant badge + SIM status.</div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="runVerification()" id="verify-btn">
+          <span>Run Thibitisha Check</span>
+        </button>
+      </div>
+
+      <div class="card" id="result-card" style="display: none;">
+        <div class="card-title">📋 Verification Result</div>
+        <div id="result-content"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
+      <div class="card-title">📝 Recent Verification Log</div>
+      <div id="verification-log">
+        <div class="log-item">
+          <div class="log-icon success">✓</div>
+          <div style="flex: 1;">
+            <div style="font-weight: 600;">Transaction VRF-2026-0815-9f2a1c — PROCEED</div>
+            <div style="color: var(--text-muted); font-size: 12px; margin-top: 2px;">Family Bank • KSh 3,200 • Risk Score: 89 (LOW) • 11:42 AM</div>
+          </div>
+          <span class="badge badge-safe">SAFE</span>
+        </div>
+        <div class="log-item">
+          <div class="log-icon danger">✕</div>
+          <div style="flex: 1;">
+            <div style="font-weight: 600;">Transaction VRF-2026-0815-8e3b2d — BLOCKED</div>
+            <div style="color: var(--text-muted); font-size: 12px; margin-top: 2px;">KCB • KSh 45,000 • Risk Score: 892 (CRITICAL) • 11:38 AM</div>
+          </div>
+          <span class="badge badge-danger">BLOCKED</span>
+        </div>
+        <div class="log-item">
+          <div class="log-icon success">✓</div>
+          <div style="flex: 1;">
+            <div style="font-weight: 600;">Transaction VRF-2026-0815-7c4a3e — PROCEED</div>
+            <div style="color: var(--text-muted); font-size: 12px; margin-top: 2px;">Equity Bank • KSh 1,500 • Risk Score: 34 (LOW) • 11:35 AM</div>
+          </div>
+          <span class="badge badge-safe">SAFE</span>
+        </div>
+        <div class="log-item">
+          <div class="log-icon warn">!</div>
+          <div style="flex: 1;">
+            <div style="font-weight: 600;">Transaction VRF-2026-0815-6d5b4f — CHALLENGE</div>
+            <div style="color: var(--text-muted); font-size: 12px; margin-top: 2px;">Co-op Bank • KSh 8,700 • Risk Score: 412 (MEDIUM) • 11:30 AM</div>
+          </div>
+          <span class="badge badge-warn">CHALLENGE</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONSUMER APP SCREEN -->
+  <div id="consumer" class="screen" style="margin-top: 20px;">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">📱 Consumer "Verify Before You Pay"</div>
+        <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 16px;">
+          This simulates the Thibitisha integration inside Airtel Money or M-PESA. Before the user confirms a send, Thibitisha verifies the recipient.
+        </p>
+        <div class="phone-mockup">
+          <div class="phone-screen">
+            <div class="phone-notch"></div>
+            <div class="phone-header" style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 32px; height: 32px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800;">T</div>
+              <div style="font-weight: 700; font-size: 15px;">Thibitisha Shield</div>
+            </div>
+            <div class="phone-body">
+              <div style="text-align: center; margin-bottom: 8px;">
+                <div style="font-size: 13px; color: var(--text-muted);">You are sending</div>
+                <div class="phone-amount" id="consumer-amount">KSh 2,000</div>
+                <div style="font-size: 13px; color: var(--text-muted);">to <strong id="consumer-recipient">Jane Ochieng</strong></div>
+              </div>
+
+              <div id="consumer-check-area">
+                <div class="merchant-card">
+                  <div class="merchant-avatar" style="background: var(--accent);">JO</div>
+                  <div class="merchant-info">
+                    <div class="merchant-name">Jane Ochieng</div>
+                    <div class="merchant-meta">2547XX****XX • Personal</div>
+                  </div>
+                </div>
+
+                <div id="consumer-verify-btn-container">
+                  <button class="phone-btn phone-btn-primary" onclick="runConsumerCheck()">
+                    <span>🔍 Verify with Thibitisha</span>
+                  </button>
+                </div>
+              </div>
+
+              <div id="consumer-result" style="display: none;">
+                <div class="thibitisha-check" id="consumer-check-result">
+                  <span>✓</span>
+                  <span>Recipient verified. No fraud detected.</span>
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted); margin: 8px 0;">
+                  <div>• SIM swap: None in 60 days</div>
+                  <div>• Device: Known device</div>
+                  <div>• Merchant badge: Not applicable</div>
+                </div>
+                <button class="phone-btn phone-btn-primary" onclick="resetConsumer()">Send Money</button>
+                <button class="phone-btn phone-btn-secondary" onclick="resetConsumer()">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔴 Fraud Scenario Simulation</div>
+        <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 16px;">
+          Now simulate what happens when a fraudster tries to receive money using a swapped SIM.
+        </p>
+        <div class="phone-mockup">
+          <div class="phone-screen">
+            <div class="phone-notch"></div>
+            <div class="phone-header" style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 32px; height: 32px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800;">T</div>
+              <div style="font-weight: 700; font-size: 15px;">Thibitisha Shield</div>
+            </div>
+            <div class="phone-body">
+              <div style="text-align: center; margin-bottom: 8px;">
+                <div style="font-size: 13px; color: var(--text-muted);">You are sending</div>
+                <div class="phone-amount" style="color: var(--danger);">KSh 15,000</div>
+                <div style="font-size: 13px; color: var(--text-muted);">to <strong>Peter Njoroge</strong></div>
+              </div>
+
+              <div id="fraud-check-area">
+                <div class="merchant-card">
+                  <div class="merchant-avatar" style="background: var(--danger);">PN</div>
+                  <div class="merchant-info">
+                    <div class="merchant-name">Peter Njoroge</div>
+                    <div class="merchant-meta">2547XX****XX • Personal</div>
+                  </div>
+                </div>
+
+                <div id="fraud-verify-btn-container">
+                  <button class="phone-btn phone-btn-primary" onclick="runFraudCheck()">
+                    <span>🔍 Verify with Thibitisha</span>
+                  </button>
+                </div>
+              </div>
+
+              <div id="fraud-result" style="display: none;">
+                <div class="thibitisha-check danger" id="fraud-check-result">
+                  <span>🚨</span>
+                  <span>SIM swap detected 2 hours ago!</span>
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted); margin: 8px 0;">
+                  <div style="color: var(--danger); font-weight: 600;">• SIM swap: TODAY at 9:15 AM</div>
+                  <div style="color: var(--danger); font-weight: 600;">• Device: UNKNOWN device</div>
+                  <div style="color: var(--danger); font-weight: 600;">• Location: 450km from usual</div>
+                </div>
+                <div style="background: #FFEBEE; padding: 12px; border-radius: 10px; font-size: 13px; color: var(--danger); font-weight: 600; margin-bottom: 12px;">
+                  ⚠️ This recipient's line was recently swapped. Do NOT send money.
+                </div>
+                <button class="phone-btn phone-btn-secondary" onclick="resetFraud()">Cancel Transaction</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MERCHANT BADGE SCREEN -->
+  <div id="merchant" class="screen" style="margin-top: 20px;">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🏪 Merchant Verification Program</div>
+        <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 16px;">
+          Thibitisha verifies businesses and issues trust badges. Consumers see these badges before paying, reducing fraud and chargebacks.
+        </p>
+
+        <div style="margin-bottom: 20px;">
+          <div class="form-label">Search Merchant</div>
+          <input type="text" class="form-input" placeholder="Enter till number, paybill, or business name..." value="123456" id="merchant-search">
+          <button class="btn btn-primary" style="margin-top: 12px;" onclick="searchMerchant()">Verify Merchant</button>
+        </div>
+
+        <div id="merchant-result">
+          <div class="merchant-card" style="padding: 20px;">
+            <div class="merchant-avatar" style="width: 56px; height: 56px; font-size: 24px;">AE</div>
+            <div class="merchant-info">
+              <div class="merchant-name" style="font-size: 18px;">ABC Electronics Ltd</div>
+              <div class="merchant-meta">Till: 123456 • Paybill: 987654</div>
+              <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                <span class="badge badge-platinum">🏆 PLATINUM</span>
+                <span class="badge badge-safe">✓ VERIFIED</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: 16px;">
+            <div class="card-title" style="margin-bottom: 12px;">Merchant Trust Signals</div>
+            <div class="signal-grid">
+              <div class="signal-card">
+                <div class="signal-header">
+                  <span class="signal-name">Business Registration</span>
+                  <span class="signal-status ok">✓ VALID</span>
+                </div>
+                <div class="signal-detail">BN/2023/123456 • Verified since Jan 2024</div>
+              </div>
+              <div class="signal-card">
+                <div class="signal-header">
+                  <span class="signal-name">KRA PIN</span>
+                  <span class="signal-status ok">✓ ACTIVE</span>
+                </div>
+                <div class="signal-detail">A001234567B • Tax compliant</div>
+              </div>
+              <div class="signal-card">
+                <div class="signal-header">
+                  <span class="signal-name">Dispute Rate</span>
+                  <span class="signal-status ok">0.1%</span>
+                </div>
+                <div class="signal-detail">3 disputes in 90 days (excellent)</div>
+              </div>
+              <div class="signal-card">
+                <div class="signal-header">
+                  <span class="signal-name">Transaction Volume</span>
+                  <span class="signal-status ok">HIGH</span>
+                </div>
+                <div class="signal-detail">KSh 4.2M/month • 2,400+ transactions</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: 16px; padding: 16px; background: #E8F5E9; border-radius: 12px;">
+            <div style="font-weight: 700; color: var(--accent); margin-bottom: 4px;">✓ Safe to pay this merchant</div>
+            <div style="font-size: 13px; color: var(--text-muted);">This business has been thoroughly verified by Thibitisha and maintains an excellent trust record.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔍 Compare: Verified vs Unverified</div>
+        <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 16px;">
+          See how Thibitisha badges appear to consumers at checkout.
+        </p>
+
+        <div style="background: var(--bg); border-radius: 16px; padding: 20px; margin-bottom: 16px;">
+          <div style="font-weight: 700; margin-bottom: 12px; color: var(--accent);">✅ VERIFIED MERCHANT</div>
+          <div class="merchant-card" style="background: white;">
+            <div class="merchant-avatar" style="background: var(--accent);">SK</div>
+            <div class="merchant-info">
+              <div class="merchant-name">SuperMart Kenya</div>
+              <div class="merchant-meta">Till: 789012 • Kilimani, Nairobi</div>
+            </div>
+            <span class="badge badge-gold">🥇 GOLD</span>
+          </div>
+          <div style="margin-top: 8px; font-size: 12px; color: var(--text-muted);">
+            ✓ Business registered • ✓ KRA compliant • ✓ Low dispute rate
+          </div>
+        </div>
+
+        <div style="background: var(--bg); border-radius: 16px; padding: 20px;">
+          <div style="font-weight: 700; margin-bottom: 12px; color: var(--danger);">⚠️ UNVERIFIED MERCHANT</div>
+          <div class="merchant-card" style="background: white; border-color: var(--danger);">
+            <div class="merchant-avatar" style="background: var(--text-muted);">??</div>
+            <div class="merchant-info">
+              <div class="merchant-name">Quick Deals Shop</div>
+              <div class="merchant-meta">Till: 999999 • Location unknown</div>
+            </div>
+            <span class="badge badge-danger">⚠️ UNVERIFIED</span>
+          </div>
+          <div style="margin-top: 8px; font-size: 12px; color: var(--text-muted);">
+            ✗ No business registration found • ✗ High dispute rate (12%) • ✗ Recently created till
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANALYTICS SCREEN -->
+  <div id="analytics" class="screen" style="margin-top: 20px;">
+    <div class="grid-3" style="margin-bottom: 20px;">
+      <div class="card">
+        <div class="card-title">MNO Coverage</div>
+        <div class="stat-value">4/4</div>
+        <div class="stat-label">MNOs connected</div>
+        <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <span class="badge badge-safe">Airtel ✓</span>
+          <span class="badge badge-safe">Safaricom ✓</span>
+          <span class="badge badge-safe">Telkom ✓</span>
+          <span class="badge badge-safe">Faiba ✓</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Fraud Prevention Rate</div>
+        <div class="stat-value" style="color: var(--accent);">87.3%</div>
+        <div class="stat-label">Of SIM swap fraud blocked</div>
+        <div class="stat-change up">↑ 12% vs last month</div>
+      </div>
+      <div class="card">
+        <div class="card-title">False Positive Rate</div>
+        <div class="stat-value" style="color: var(--warning);">1.8%</div>
+        <div class="stat-label">Legitimate txns flagged</div>
+        <div class="stat-change up">↓ 0.4% improvement</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">📈 Daily Verification Volume</div>
+        <div class="chart-bar" id="volume-chart">
+          <div class="chart-col">
+            <div class="chart-bar-fill" style="height: 45%; background: var(--primary); opacity: 0.7;"></div>
+            <div class="chart-value">8.2K</div>
+            <div class="chart-label">Mon</div>
+          </div>
+          <div class="chart-col">
+            <div class="chart-bar-fill" style="height: 62%; background: var(--primary); opacity: 0.7;"></div>
+            <div class="chart-value">11.4K</div>
+            <div class="chart-label">Tue</div>
+          </div>
+          <div class="chart-col">
+            <div class="chart-bar-fill" style="height: 55%; background: var(--primary); opacity: 0.7;"></div>
+            <div class="chart-value">10.1K</div>
+            <div class="chart-label">Wed</div>
+          </div>
+          <div class="chart-col">
+            <div class="chart-bar-fill" style="height: 78%; background: var(--primary);"></div>
+            <div class="chart-value">14.3K</div>
+            <div class="chart-label">Thu</div>
+          </div>
+          <div class="chart-col">
+            <div class="chart-bar-fill" style="height: 85%; background: var(--primary);"></div>
+            <div class="chart-value">15.6K</div>
+            <div class="chart-label">Fri</div>
+          </div>
+          <div class="chart-col">
+            <div class="chart-bar-fill" style="height: 92%; background: var(--primary);"></div>
+            <div class="chart-value">16.9K</div>
+            <div class="chart-label">Sat</div>
+          </div>
+          <div class="chart-col">
+            <div class="chart-bar-fill" style="height: 70%; background: var(--primary); opacity: 0.7;"></div>
+            <div class="chart-value">12.8K</div>
+            <div class="chart-label">Sun</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🎯 Risk Tier Distribution (Today)</div>
+        <div style="margin-top: 16px;">
+          <div style="display: flex; align-items: center; margin-bottom: 16px;">
+            <div style="width: 80px; font-size: 13px; font-weight: 600;">LOW</div>
+            <div class="risk-meter" style="flex: 1; margin: 0 12px;">
+              <div class="risk-fill low" style="width: 78%;"></div>
+            </div>
+            <div style="width: 60px; text-align: right; font-weight: 700;">78%</div>
+          </div>
+          <div style="display: flex; align-items: center; margin-bottom: 16px;">
+            <div style="width: 80px; font-size: 13px; font-weight: 600;">MEDIUM</div>
+            <div class="risk-meter" style="flex: 1; margin: 0 12px;">
+              <div class="risk-fill medium" style="width: 14%;"></div>
+            </div>
+            <div style="width: 60px; text-align: right; font-weight: 700;">14%</div>
+          </div>
+          <div style="display: flex; align-items: center; margin-bottom: 16px;">
+            <div style="width: 80px; font-size: 13px; font-weight: 600;">HIGH</div>
+            <div class="risk-meter" style="flex: 1; margin: 0 12px;">
+              <div class="risk-fill high" style="width: 6%;"></div>
+            </div>
+            <div style="width: 60px; text-align: right; font-weight: 700;">6%</div>
+          </div>
+          <div style="display: flex; align-items: center;">
+            <div style="width: 80px; font-size: 13px; font-weight: 600;">CRITICAL</div>
+            <div class="risk-meter" style="flex: 1; margin: 0 12px;">
+              <div class="risk-fill critical" style="width: 2%;"></div>
+            </div>
+            <div style="width: 60px; text-align: right; font-weight: 700;">2%</div>
+          </div>
+        </div>
+        <div style="margin-top: 20px; padding: 16px; background: var(--bg); border-radius: 12px;">
+          <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">💡 Insight</div>
+          <div style="font-size: 13px; color: var(--text-muted);">2% of transactions flagged as CRITICAL today would have resulted in an estimated <strong>KSh 2.4M in prevented fraud</strong> across partner banks.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
+      <div class="card-title">🔔 Real-Time Alert Feed</div>
+      <div class="timeline" style="margin-top: 16px;">
+        <div class="timeline-item completed">
+          <div class="timeline-dot"></div>
+          <div class="timeline-text"><strong>CRITICAL alert resolved</strong> — KCB blocked KSh 45,000 withdrawal. SIM swap detected on Airtel line.</div>
+          <div class="timeline-time">11:42 AM • 3 min ago</div>
+        </div>
+        <div class="timeline-item completed">
+          <div class="timeline-dot"></div>
+          <div class="timeline-text"><strong>MNO adapter sync</strong> — Safaricom API latency improved to 89ms. All systems green.</div>
+          <div class="timeline-time">11:38 AM • 7 min ago</div>
+        </div>
+        <div class="timeline-item completed">
+          <div class="timeline-dot"></div>
+          <div class="timeline-text"><strong>Merchant verification</strong> — 47 new businesses verified and badged today.</div>
+          <div class="timeline-time">11:30 AM • 15 min ago</div>
+        </div>
+        <div class="timeline-item failed">
+          <div class="timeline-dot"></div>
+          <div class="timeline-text"><strong>Telkom adapter degraded</strong> — Fallback scoring activated. ETA fix: 14:00.</div>
+          <div class="timeline-time">11:15 AM • 30 min ago</div>
+        </div>
+        <div class="timeline-item completed">
+          <div class="timeline-dot"></div>
+          <div class="timeline-text"><strong>Daily report sent</strong> — CBK cybersecurity quarterly report auto-generated and submitted.</div>
+          <div class="timeline-time">10:00 AM • 1 hr ago</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px;">
+    <div style="margin-bottom: 8px;"><strong>Thibitisha MVP Demo v1.0</strong></div>
+    <div>Built for Airtel Kenya Partnership Discussion | August 2026</div>
+    <div style="margin-top: 8px;">This is a functional prototype. All data is simulated for demonstration purposes.</div>
+  </div>
+</div>
+
+<script>
+  let currentScenario = 'safe';
+
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  function selectScenario(el, scenario) {
+    document.querySelectorAll('.demo-scenario').forEach(s => s.classList.remove('selected'));
+    el.classList.add('selected');
+    currentScenario = scenario;
+  }
+
+  function runVerification() {
+    const btn = document.getElementById('verify-btn');
+    const resultCard = document.getElementById('result-card');
+    const resultContent = document.getElementById('result-content');
+
+    btn.innerHTML = '<span class="spinner"></span> Running Thibitisha Check...';
+    btn.disabled = true;
+    resultCard.style.display = 'none';
+
+    setTimeout(() => {
+      let html = '';
+      if (currentScenario === 'safe') {
+        html = `
+          <div style="text-align: center; margin-bottom: 20px;">
+            <div style="width: 64px; height: 64px; background: #E8F5E9; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 28px;">✓</div>
+            <div style="font-size: 24px; font-weight: 800; color: var(--accent); margin-top: 12px;">PROCEED</div>
+            <div style="font-size: 14px; color: var(--text-muted);">Risk Score: 145 • Tier: LOW</div>
+          </div>
+          <div class="signal-grid">
+            <div class="signal-card">
+              <div class="signal-header"><span class="signal-name">SIM Swap</span><span class="signal-status ok">✓ SAFE</span></div>
+              <div class="signal-detail">Last swap: 59 days ago<br/>Airtel + Safaricom checked</div>
+            </div>
+            <div class="signal-card">
+              <div class="signal-header"><span class="signal-name">Device</span><span class="signal-status ok">✓ MATCH</span></div>
+              <div class="signal-detail">Known device fingerprint<br/>Same phone for 8 months</div>
+            </div>
+            <div class="signal-card">
+              <div class="signal-header"><span class="signal-name">Location</span><span class="signal-status ok">✓ NEARBY</span></div>
+              <div class="signal-detail">0.3km from home base<br/>Westlands, Nairobi</div>
+            </div>
+            <div class="signal-card">
+              <div class="signal-header"><span class="signal-name">Velocity</span><span class="signal-status ok">✓ NORMAL</span></div>
+              <div class="signal-detail">3 txns today (KSh 12,500)<br/>Within normal pattern</div>
+            </div>
+          </div>
+          <div style="margin-top: 16px; padding: 12px; background: #E8F5E9; border-radius: 10px; font-size: 13px; color: var(--accent); font-weight: 600;">
+            ✓ All signals green. Transaction is safe to proceed.
+          </div>
+        `;
+      } else if (currentScenario === 'simswap') {
+        html = `
+          <div style="text-align: center; margin-bottom: 20px;">
+            <div style="width: 64px; height: 64px; background: #FFEBEE; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 28px;">✕</div>
+            <div style="font-size: 24px; font-weight: 800; color: var(--danger); margin-top: 12px;">BLOCK</div>
+            <div style="font-size: 14px; color: var(--text-muted);">Risk Score: 892 • Tier: CRITICAL</div>
+          </div>
+          <div class="signal-grid">
+            <div class="signal-card" style="border-color: var(--danger);">
+              <div class="signal-header"><span class="signal-name">SIM Swap</span><span class="signal-status danger">🚨 TODAY</span></div>
+              <div class="signal-detail" style="color: var(--danger); font-weight: 600;">Swapped at 9:15 AM (2h ago)<br/>Airtel line compromised</div>
+            </div>
+            <div class="signal-card" style="border-color: var(--danger);">
+              <div class="signal-header"><span class="signal-name">Device</span><span class="signal-status danger">✕ MISMATCH</span></div>
+              <div class="signal-detail" style="color: var(--danger); font-weight: 600;">Unknown device detected<br/>New IMEI never seen before</div>
+            </div>
+            <div class="signal-card" style="border-color: var(--danger);">
+              <div class="signal-header"><span class="signal-name">Location</span><span class="signal-status danger">✕ ANOMALY</span></div>
+              <div class="signal-detail" style="color: var(--danger); font-weight: 600;">450km from home base<br/>Mombasa vs usual Nairobi</div>
+            </div>
+            <div class="signal-card">
+              <div class="signal-header"><span class="signal-name">Velocity</span><span class="signal-status warn">⚠ HIGH</span></div>
+              <div class="signal-detail">12 txns attempted today<br/>KSh 187,000 total (unusual)</div>
+            </div>
+          </div>
+          <div style="margin-top: 16px; padding: 12px; background: #FFEBEE; border-radius: 10px; font-size: 13px; color: var(--danger); font-weight: 600;">
+            🚨 CRITICAL: SIM swap + device mismatch + location anomaly. Block transaction and require in-branch verification.
+          </div>
+          <div style="margin-top: 8px; font-size: 12px; color: var(--text-muted);">Suggested action: REQUIRE_IN_BRANCH_VERIFICATION • Alert sent to fraud team</div>
+        `;
+      } else {
+        html = `
+          <div style="text-align: center; margin-bottom: 20px;">
+            <div style="width: 64px; height: 64px; background: #E8F5E9; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 28px;">✓</div>
+            <div style="font-size: 24px; font-weight: 800; color: var(--accent); margin-top: 12px;">PROCEED</div>
+            <div style="font-size: 14px; color: var(--text-muted);">Risk Score: 67 • Tier: LOW</div>
+          </div>
+          <div class="signal-grid">
+            <div class="signal-card">
+              <div class="signal-header"><span class="signal-name">SIM Swap</span><span class="signal-status ok">✓ SAFE</span></div>
+              <div class="signal-detail">No swap in 90 days<br/>All MNOs checked</div>
+            </div>
+            <div class="signal-card">
+              <div class="signal-header"><span class="signal-name">Merchant</span><span class="signal-status ok">✓ PLATINUM</span></div>
+              <div class="signal-detail">ABC Electronics Ltd<br/>Verified since Jan 2024</div>
+            </div>
+            <div class="signal-card">
+              <div class="signal-header"><span class="signal-name">Device</span><span class="signal-status ok">✓ MATCH</span></div>
+              <div class="signal-detail">Known device<br/>Same phone for 6 months</div>
+            </div>
+            <div class="signal-card">
+              <div class="signal-header"><span class="signal-name">Location</span><span class="signal-status ok">✓ NEARBY</span></div>
+              <div class="signal-detail">Westlands, Nairobi<br/>Near merchant location</div>
+            </div>
+          </div>
+          <div style="margin-top: 16px; padding: 12px; background: #E8F5E9; border-radius: 10px; font-size: 13px; color: var(--accent); font-weight: 600;">
+            ✓ Merchant is Platinum verified. Customer line is secure. Safe to proceed.
+          </div>
+        `;
+      }
+
+      resultContent.innerHTML = html;
+      resultCard.style.display = 'block';
+      btn.innerHTML = '<span>Run Thibitisha Check</span>';
+      btn.disabled = false;
+
+      const log = document.getElementById('verification-log');
+      const newLog = document.createElement('div');
+      newLog.className = 'log-item';
+      newLog.style.animation = 'fadeIn 0.3s ease';
+      const id = 'VRF-2026-0815-' + Math.random().toString(36).substr(2, 6);
+      const time = new Date().toLocaleTimeString('en-KE', {hour: '2-digit', minute:'2-digit'});
+      if (currentScenario === 'simswap') {
+        newLog.innerHTML = `<div class="log-icon danger">✕</div><div style="flex: 1;"><div style="font-weight: 600;">Transaction ${id} — BLOCKED</div><div style="color: var(--text-muted); font-size: 12px; margin-top: 2px;">Demo Bank • KSh 45,000 • Risk Score: 892 (CRITICAL) • ${time}</div></div><span class="badge badge-danger">BLOCKED</span>`;
+      } else {
+        newLog.innerHTML = `<div class="log-icon success">✓</div><div style="flex: 1;"><div style="font-weight: 600;">Transaction ${id} — PROCEED</div><div style="color: var(--text-muted); font-size: 12px; margin-top: 2px;">Demo Bank • KSh ${currentScenario === 'safe' ? '5,000' : '12,000'} • Risk Score: ${currentScenario === 'safe' ? '145' : '67'} (LOW) • ${time}</div></div><span class="badge badge-safe">SAFE</span>`;
+      }
+      log.insertBefore(newLog, log.firstChild);
+
+      const statVerifications = document.getElementById('stat-verifications');
+      const statBlocked = document.getElementById('stat-blocked');
+      let v = parseInt(statVerifications.textContent.replace(/,/g, ''));
+      statVerifications.textContent = (v + 1).toLocaleString();
+      if (currentScenario === 'simswap') {
+        let b = parseInt(statBlocked.textContent.replace(/,/g, ''));
+        statBlocked.textContent = (b + 1).toLocaleString();
+      }
+    }, 1200);
+  }
+
+  function runConsumerCheck() {
+    const btnContainer = document.getElementById('consumer-verify-btn-container');
+    const result = document.getElementById('consumer-result');
+    btnContainer.innerHTML = '<button class="phone-btn phone-btn-primary" disabled><span class="spinner"></span> Verifying...</button>';
+    setTimeout(() => {
+      btnContainer.style.display = 'none';
+      result.style.display = 'block';
+    }, 1500);
+  }
+
+  function resetConsumer() {
+    document.getElementById('consumer-verify-btn-container').style.display = 'block';
+    document.getElementById('consumer-verify-btn-container').innerHTML = '<button class="phone-btn phone-btn-primary" onclick="runConsumerCheck()"><span>🔍 Verify with Thibitisha</span></button>';
+    document.getElementById('consumer-result').style.display = 'none';
+  }
+
+  function runFraudCheck() {
+    const btnContainer = document.getElementById('fraud-verify-btn-container');
+    const result = document.getElementById('fraud-result');
+    btnContainer.innerHTML = '<button class="phone-btn phone-btn-primary" disabled><span class="spinner"></span> Verifying...</button>';
+    setTimeout(() => {
+      btnContainer.style.display = 'none';
+      result.style.display = 'block';
+    }, 1500);
+  }
+
+  function resetFraud() {
+    document.getElementById('fraud-verify-btn-container').style.display = 'block';
+    document.getElementById('fraud-verify-btn-container').innerHTML = '<button class="phone-btn phone-btn-primary" onclick="runFraudCheck()"><span>🔍 Verify with Thibitisha</span></button>';
+    document.getElementById('fraud-result').style.display = 'none';
+  }
+
+  function searchMerchant() {
+    const result = document.getElementById('merchant-result');
+    result.style.opacity = '0.5';
+    setTimeout(() => {
+      result.style.opacity = '1';
+    }, 400);
+  }
+</script>
+
+</body>
+</html>
