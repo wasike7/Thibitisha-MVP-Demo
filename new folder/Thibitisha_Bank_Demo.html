@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thibitisha — Bank-Side Fraud Prevention Demo</title>
+<style>
+  :root {
+    --primary: #E31937;
+    --primary-dark: #B7152C;
+    --secondary: #1A1A2E;
+    --accent: #00C853;
+    --warning: #FF9100;
+    --danger: #FF1744;
+    --info: #2196F3;
+    --bg: #F5F7FA;
+    --card: #FFFFFF;
+    --text: #1A1A2E;
+    --text-muted: #6B7280;
+    --border: #E5E7EB;
+    --bank-blue: #003B5C;
+    --bank-gold: #C9A227;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+  .app-container { max-width: 1400px; margin: 0 auto; padding: 16px; }
+  .header { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; background: var(--card); border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon { width: 40px; height: 40px; background: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 18px; }
+  .logo-text { font-size: 22px; font-weight: 800; color: var(--secondary); }
+  .logo-sub { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+  .bank-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; background: var(--bank-blue); color: white; border-radius: 20px; font-size: 13px; font-weight: 700; }
+  .nav-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .nav-tab { padding: 10px 20px; border-radius: 10px; border: none; background: transparent; color: var(--text-muted); font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 14px; }
+  .nav-tab.active { background: var(--primary); color: white; }
+  .nav-tab:hover:not(.active) { background: var(--bg); color: var(--text); }
+  .screen { display: none; animation: fadeIn 0.3s ease; }
+  .screen.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .card { background: var(--card); border-radius: 16px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid var(--border); }
+  .card-title { font-size: 14px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; }
+  .stat-value { font-size: 32px; font-weight: 800; color: var(--secondary); }
+  .stat-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+  .btn { padding: 12px 24px; border-radius: 10px; border: none; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-success { background: var(--accent); color: white; }
+  .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; }
+  .form-input { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; background: var(--card); }
+  .form-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(227,25,55,0.1); }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+  .badge-safe { background: #E8F5E9; color: var(--accent); }
+  .badge-warn { background: #FFF3E0; color: var(--warning); }
+  .badge-danger { background: #FFEBEE; color: var(--danger); }
+  .badge-info { background: #E3F2FD; color: var(--info); }
+  .flow-diagram { background: var(--bg); border-radius: 16px; padding: 24px; position: relative; }
+  .flow-step { display: flex; align-items: center; gap: 16px; padding: 16px; background: white; border-radius: 12px; margin-bottom: 12px; border: 2px solid var(--border); transition: all 0.3s; position: relative; }
+  .flow-step.active { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(227,25,55,0.1); }
+  .flow-step.blocked { border-color: var(--danger); background: #FFEBEE; }
+  .flow-step.success { border-color: var(--accent); background: #E8F5E9; }
+  .flow-step-num { width: 32px; height: 32px; border-radius: 50%; background: var(--border); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; flex-shrink: 0; }
+  .flow-step.active .flow-step-num { background: var(--primary); color: white; }
+  .flow-step.blocked .flow-step-num { background: var(--danger); color: white; }
+  .flow-step.success .flow-step-num { background: var(--accent); color: white; }
+  .flow-arrow { text-align: center; font-size: 20px; color: var(--text-muted); margin: -6px 0; position: relative; z-index: 1; }
+  .flow-arrow::after { content: '▼'; }
+  .signal-card { padding: 16px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); margin-bottom: 12px; }
+  .signal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .signal-name { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+  .signal-status { font-size: 12px; font-weight: 700; }
+  .signal-status.ok { color: var(--accent); }
+  .signal-status.warn { color: var(--warning); }
+  .signal-status.danger { color: var(--danger); }
+  .signal-detail { font-size: 12px; color: var(--text-muted); }
+  .risk-meter { width: 100%; height: 12px; background: #E5E7EB; border-radius: 6px; overflow: hidden; margin: 12px 0; }
+  .risk-fill { height: 100%; border-radius: 6px; transition: width 0.6s ease; }
+  .risk-fill.low { background: var(--accent); }
+  .risk-fill.medium { background: var(--warning); }
+  .risk-fill.high { background: var(--danger); }
+  .risk-fill.critical { background: linear-gradient(90deg, var(--danger), #8B0000); }
+  .timeline { position: relative; padding-left: 24px; }
+  .timeline::before { content: ''; position: absolute; left: 7px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+  .timeline-item { position: relative; padding-bottom: 16px; }
+  .timeline-dot { position: absolute; left: -20px; width: 14px; height: 14px; border-radius: 50%; background: var(--primary); border: 3px solid var(--card); }
+  .timeline-item.completed .timeline-dot { background: var(--accent); }
+  .timeline-item.failed .timeline-dot { background: var(--danger); }
+  .timeline-text { font-size: 13px; }
+  .timeline-time { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .log-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; margin-bottom: 8px; background: var(--bg); font-size: 13px; }
+  .log-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .log-icon.success { background: #E8F5E9; color: var(--accent); }
+  .log-icon.danger { background: #FFEBEE; color: var(--danger); }
+  .log-icon.warn { background: #FFF3E0; color: var(--warning); }
+  .log-icon.info { background: #E3F2FD; color: var(--info); }
+  .phone-mockup { max-width: 340px; margin: 0 auto; background: var(--secondary); border-radius: 32px; padding: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+  .phone-screen { background: var(--bg); border-radius: 24px; overflow: hidden; min-height: 480px; }
+  .phone-notch { width: 120px; height: 24px; background: var(--secondary); border-radius: 0 0 16px 16px; margin: 0 auto; }
+  .phone-body { padding: 20px; }
+  .phone-btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-weight: 700; font-size: 15px; cursor: pointer; margin-top: 10px; }
+  .phone-btn-primary { background: var(--primary); color: white; }
+  .phone-btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hidden { display: none !important; }
+  .pulse { animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .demo-scenario { padding: 14px 18px; border-radius: 12px; border: 2px solid var(--border); cursor: pointer; transition: all 0.2s; margin-bottom: 10px; }
+  .demo-scenario:hover { border-color: var(--primary); background: rgba(227,25,55,0.03); }
+  .demo-scenario.selected { border-color: var(--primary); background: rgba(227,25,55,0.06); }
+  .demo-scenario-title { font-weight: 700; font-size: 14px; }
+  .demo-scenario-desc { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+  .comparison-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .comparison-table th { text-align: left; padding: 12px; background: var(--bg); font-weight: 700; color: var(--text-muted); border-bottom: 2px solid var(--border); }
+  .comparison-table td { padding: 12px; border-bottom: 1px solid var(--border); }
+  .comparison-table tr:hover { background: var(--bg); }
+  @media (max-width: 768px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .header { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-container">
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">T</div>
+      <div>
+        <div class="logo-text">Thibitisha</div>
+        <div class="logo-sub">Bank-Side Fraud Prevention — Interactive Demo</div>
+      </div>
+    </div>
+    <div class="bank-badge">🏦 DEMO BANK — Kenya</div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab" onclick="window.location.href='/'">← Main MVP</button>
+    <button class="nav-tab active" onclick="showScreen('attack-chain')">🔴 Attack Chain</button>
+    <button class="nav-tab" onclick="showScreen('integration')">🔌 Integration Flow</button>
+    <button class="nav-tab" onclick="showScreen('live-demo')">⚡ Live Simulation</button>
+    <button class="nav-tab" onclick="showScreen('comparison')">📊 With vs Without</button>
+  </div>
+
+  <!-- ATTACK CHAIN SCREEN -->
+  <div id="attack-chain" class="screen active">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🔴 How SIM Swap Fraud Happens in Kenya</div>
+        <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 16px;">
+          This is the most common bank fraud vector in Kenya today. Click each step to understand the attack.
+        </p>
+
+        <div class="flow-diagram">
+          <div class="flow-step" id="step1" onclick="highlightStep(1)">
+            <div class="flow-step-num">1</div>
+            <div>
+              <div style="font-weight: 700;">Data Harvesting</div>
+              <div style="font-size: 13px; color: var(--text-muted);">Fraudster buys ID + phone number from dark web or phishing</div>
+            </div>
+          </div>
+          <div class="flow-arrow"></div>
+          <div class="flow-step" id="step2" onclick="highlightStep(2)">
+            <div class="flow-step-num">2</div>
+            <div>
+              <div style="font-weight: 700;">Social Engineering at MNO Agent</div>
+              <div style="font-size: 13px; color: var(--text-muted);">Convinces agent (or bribes) to issue new SIM with victim's number</div>
+            </div>
+          </div>
+          <div class="flow-arrow"></div>
+          <div class="flow-step" id="step3" onclick="highlightStep(3)">
+            <div class="flow-step-num">3</div>
+            <div>
+              <div style="font-weight: 700;">SIM Swap Complete</div>
+              <div style="font-size: 13px; color: var(--text-muted);">Attacker now controls victim's phone number. Victim's phone goes dead.</div>
+            </div>
+          </div>
+          <div class="flow-arrow"></div>
+          <div class="flow-step" id="step4" onclick="highlightStep(4)">
+            <div class="flow-step-num">4</div>
+            <div>
+              <div style="font-weight: 700;">Bank Login + OTP Interception</div>
+              <div style="font-size: 13px; color: var(--text-muted);">Attacker uses stolen credentials. Bank sends OTP to attacker's new SIM.</div>
+            </div>
+          </div>
+          <div class="flow-arrow"></div>
+          <div class="flow-step" id="step5" onclick="highlightStep(5)">
+            <div class="flow-step-num">5</div>
+            <div>
+              <div style="font-weight: 700;">Fund Transfer — Money Gone in 3 Minutes</div>
+              <div style="font-size: 13px; color: var(--text-muted);">KSh 50,000–500,000 transferred via M-PESA or bank transfer. Irreversible.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🛡️ Where Thibitisha Stops It</div>
+        <div id="defense-detail" style="padding: 20px; background: var(--bg); border-radius: 12px; min-height: 300px;">
+          <div style="text-align: center; color: var(--text-muted); padding: 40px 20px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">👆</div>
+            <div style="font-weight: 600;">Click a step on the left</div>
+            <div style="font-size: 13px; margin-top: 8px;">See exactly where Thibitisha would intercept this attack</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
+      <div class="card-title">📋 Attack Variants in Kenya</div>
+      <table class="comparison-table">
+        <tr>
+          <th>Attack Type</th>
+          <th>How It Works</th>
+          <th>Bank's Blind Spot</th>
+          <th>Thibitisha Fix</th>
+        </tr>
+        <tr>
+          <td><strong>Classic SIM Swap</strong></td>
+          <td>Attacker gets new SIM with victim's number</td>
+          <td>Bank doesn't know SIM was swapped</td>
+          <td>Real-time SIM swap check before OTP</td>
+        </tr>
+        <tr>
+          <td><strong>Insider SIM Swap</strong></td>
+          <td>Corrupt MNO agent does swap off-books</td>
+          <td>No audit trail in MNO systems</td>
+          <td>Cross-MNO verification catches anomalies</td>
+        </tr>
+        <tr>
+          <td><strong>OTP Forwarding Scam</strong></td>
+          <td>Victim tricked into sharing OTP</td>
+          <td>Bank sees "user authorized"</td>
+          <td>Device + location mismatch flags it</td>
+        </tr>
+        <tr>
+          <td><strong>Device Swap + SIM</strong></td>
+          <td>New device + new SIM simultaneously</td>
+          <td>Bank sees new device but no SIM context</td>
+          <td>Multi-signal scoring catches both changes</td>
+        </tr>
+        <tr>
+          <td><strong>Merchant Till Fraud</strong></td>
+          <td>Fake merchant till collects payments</td>
+          <td>Bank verifies till number, not merchant</td>
+          <td>Merchant badge verification</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- INTEGRATION FLOW SCREEN -->
+  <div id="integration" class="screen">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">❌ WITHOUT Thibitisha — Current Bank Flow</div>
+        <div class="flow-diagram" style="background: #FFEBEE;">
+          <div class="flow-step">
+            <div class="flow-step-num" style="background: var(--text-muted); color: white;">1</div>
+            <div>
+              <div style="font-weight: 700;">Customer Initiates Transfer</div>
+              <div style="font-size: 12px; color: var(--text-muted);">Enters recipient, amount, PIN in mobile app</div>
+            </div>
+          </div>
+          <div class="flow-arrow"></div>
+          <div class="flow-step">
+            <div class="flow-step-num" style="background: var(--text-muted); color: white;">2</div>
+            <div>
+              <div style="font-weight: 700;">Bank Validates PIN</div>
+              <div style="font-size: 12px; color: var(--text-muted);">Password/PIN check passes</div>
+            </div>
+          </div>
+          <div class="flow-arrow"></div>
+          <div class="flow-step">
+            <div class="flow-step-num" style="background: var(--text-muted); color: white;">3</div>
+            <div>
+              <div style="font-weight: 700;">Bank Sends OTP via SMS</div>
+              <div style="font-size: 12px; color: var(--text-muted);">OTP goes to registered phone number</div>
+            </div>
+          </div>
+          <div class="flow-arrow"></div>
+          <div class="flow-step" style="border-color: var(--danger);">
+            <div class="flow-step-num" style="background: var(--danger); color: white;">!</div>
+            <div>
+              <div style="font-weight: 700; color: var(--danger);">Fraudster Intercepts OTP</div>
+              <div style="font-size: 12px; color: var(--danger);">Because SIM is swapped, OTP goes to attacker</div>
+            </div>
+          </div>
+          <div class="flow-arrow"></div>
+          <div class="flow-step" style="border-color: var(--danger); background: #FFEBEE;">
+            <div class="flow-step-num" style="background: var(--danger); color: white;">✕</div>
+            <div>
+              <div style="font-weight: 700; color: var(--danger);">Transaction Approved — Funds Lost</div>
+              <div style="font-size: 12px; color: var(--danger);">Bank sees valid OTP. Money transferred. Customer discovers hours later.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">✅ WITH Thibitisha — Protected Flow</div>
+        <div class="flow-diagram" style="background: #E8F5E9;">
+          <div class="flow-step">
+            <div class="flow-step-num" style="background: var(--text-muted); color: white;">1</div>
+            <div>
+              <div style="font-weight: 700;">Customer Initiates Transfer</div>
+              <div style="font-size: 12px; color: var(--text-muted);">Enters recipient, amount, PIN in mobile app</div>
+            </div>
+          </div>
+          <div class="flow-arrow"></div>
+          <div class="flow-step">
+            <div class="flow-step-num" style="background: var(--text-muted); color: white;">2</div>
+            <div>
+              <div style="font-weight: 700;">Bank Validates PIN</div>
+              <div style="font-size: 12px; color: var(--text-muted);">Password/PIN check passes</div>
+            </div>
+          </div>
+          <div class="flow-arrow"></div>
+          <div class="flow-step active" style="border-color: var(--primary);">
+            <div class="flow-step-num" style="background: var(--primary); color: white;">T</div>
+            <div>
+              <div style="font-weight: 700; color: var(--primary);">THIBITISHA CHECK (NEW)</div>
+              <div style="font-size: 12px; color: var(--primary);">Query SIM swap, device, location, velocity in &lt;200ms</div>
+            </div>
+          </div>
+          <div class="flow-arrow"></div>
+          <div class="flow-step" style="border-color: var(--danger); background: #FFEBEE;">
+            <div class="flow-step-num" style="background: var(--danger); color: white;">🚫</div>
+            <div>
+              <div style="font-weight: 700; color: var(--danger);">BLOCK — Risk Score: 892 (CRITICAL)</div>
+              <div style="font-size: 12px; color: var(--danger);">SIM swap detected 2 hours ago. No OTP sent.</div>
+            </div>
+          </div>
+          <div class="flow-arrow"></div>
+          <div class="flow-step" style="border-color: var(--accent); background: #E8F5E9;">
+            <div class="flow-step-num" style="background: var(--accent); color: white;">✓</div>
+            <div>
+              <div style="font-weight: 700; color: var(--accent);">Customer + Fraud Team Alerted</div>
+              <div style="font-size: 12px; color: var(--accent);">Account frozen. Customer gets SMS: "Suspicious activity blocked."</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
+      <div class="card-title">🔌 Integration Points in a Kenyan Bank</div>
+      <div class="grid-3">
+        <div class="card" style="background: var(--bg); border: none;">
+          <div style="font-weight: 700; margin-bottom: 8px;">A. Login Authentication</div>
+          <div style="font-size: 13px; color: var(--text-muted);">After password validation, BEFORE OTP is sent. Checks if user's phone has been SIM-swapped.</div>
+        </div>
+        <div class="card" style="background: var(--bg); border: none;">
+          <div style="font-weight: 700; margin-bottom: 8px;">B. Transaction Authorization</div>
+          <div style="font-size: 13px; color: var(--text-muted);">After user initiates transfer, BEFORE OTP. Checks recipient + SIM + device + location.</div>
+        </div>
+        <div class="card" style="background: var(--bg); border: none;">
+          <div style="font-weight: 700; margin-bottom: 8px;">C. New Payee Addition</div>
+          <div style="font-size: 13px; color: var(--text-muted);">When adding a beneficiary. Verifies recipient's line legitimacy and merchant badge.</div>
+        </div>
+        <div class="card" style="background: var(--bg); border: none;">
+          <div style="font-weight: 700; margin-bottom: 8px;">D. ATM Cardless Withdrawal</div>
+          <div style="font-size: 13px; color: var(--text-muted);">Before generating withdrawal code. Checks phone line + ATM location vs. user pattern.</div>
+        </div>
+        <div class="card" style="background: var(--bg); border: none;">
+          <div style="font-weight: 700; margin-bottom: 8px;">E. Batch/Standing Orders</div>
+          <div style="font-size: 13px; color: var(--text-muted);">When scheduled payments execute. Async verification of account holder line status.</div>
+        </div>
+        <div class="card" style="background: var(--bg); border: none;">
+          <div style="font-weight: 700; margin-bottom: 8px;">F. High-Value Transfers</div>
+          <div style="font-size: 13px; color: var(--text-muted);">Any transaction above bank threshold. Enhanced verification with all signals.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIVE SIMULATION SCREEN -->
+  <div id="live-demo" class="screen">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🏦 Bank Transaction Monitor</div>
+        <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 16px;">
+          This simulates what a bank's fraud monitoring dashboard looks like with Thibitisha integrated. Select a scenario and watch the transaction flow.
+        </p>
+
+        <div style="margin-bottom: 16px;">
+          <div class="form-label">Select Transaction Scenario</div>
+          <div class="demo-scenario selected" onclick="selectScenario(this, 'normal')">
+            <div class="demo-scenario-title">✅ Normal Transfer — John Kamau</div>
+            <div class="demo-scenario-desc">KSh 5,000 to Jane Ochieng. Known device. No SIM swap. Nearby location.</div>
+          </div>
+          <div class="demo-scenario" onclick="selectScenario(this, 'simswap')">
+            <div class="demo-scenario-title">🚨 SIM Swap Fraud — Mary Wanjiku</div>
+            <div class="demo-scenario-desc">KSh 45,000 transfer. SIM swapped 2 hours ago. New device. 450km away.</div>
+          </div>
+          <div class="demo-scenario" onclick="selectScenario(this, 'newdevice')">
+            <div class="demo-scenario-title">⚠️ New Device Login — Peter Njoroge</div>
+            <div class="demo-scenario-desc">Login from unrecognized phone. Same SIM but different device fingerprint.</div>
+          </div>
+          <div class="demo-scenario" onclick="selectScenario(this, 'merchant')">
+            <div class="demo-scenario-title">🏪 Merchant Payment — ABC Electronics</div>
+            <div class="demo-scenario-desc">KSh 12,000 till payment. Platinum verified merchant. Safe customer.</div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="runBankSimulation()" id="sim-btn">
+          <span>▶ Run Transaction Simulation</span>
+        </button>
+      </div>
+
+      <div class="card" id="sim-result-card" style="display: none;">
+        <div class="card-title">📋 Transaction Result</div>
+        <div id="sim-result-content"></div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top: 20px;">
+      <div class="card">
+        <div class="card-title">🔍 Thibitisha Risk Analysis</div>
+        <div id="risk-analysis">
+          <div style="text-align: center; color: var(--text-muted); padding: 40px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">🔍</div>
+            <div>Run a simulation to see the risk analysis</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📱 Customer Notification</div>
+        <div id="customer-notification">
+          <div style="text-align: center; color: var(--text-muted); padding: 40px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">📱</div>
+            <div>Run a simulation to see customer experience</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
+      <div class="card-title">📝 Bank Audit Trail</div>
+      <div id="audit-log">
+        <div class="timeline">
+          <div class="timeline-item completed">
+            <div class="timeline-dot"></div>
+            <div class="timeline-text"><strong>System initialized</strong> — Thibitisha fraud prevention module active</div>
+            <div class="timeline-time">10:00 AM</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPARISON SCREEN -->
+  <div id="comparison" class="screen">
+    <div class="card">
+      <div class="card-title">📊 Bank Fraud Prevention: With vs Without Thibitisha</div>
+      <table class="comparison-table">
+        <tr>
+          <th style="width: 25%;">Metric</th>
+          <th style="width: 37.5%;">Without Thibitisha (Current)</th>
+          <th style="width: 37.5%;">With Thibitisha</th>
+        </tr>
+        <tr>
+          <td><strong>Fraud Detection Speed</strong></td>
+          <td>Hours (batch review by fraud team)</td>
+          <td style="color: var(--accent); font-weight: 600;">&lt; 200ms (real-time API call)</td>
+        </tr>
+        <tr>
+          <td><strong>SIM Swap Awareness</strong></td>
+          <td>Zero — bank has no visibility into telco layer</td>
+          <td style="color: var(--accent); font-weight: 600;">Full cross-MNO visibility</td>
+        </tr>
+        <tr>
+          <td><strong>OTP Security</strong></td>
+          <td>Assumes phone is in owner's possession</td>
+          <td style="color: var(--accent); font-weight: 600;">Verifies line integrity BEFORE sending OTP</td>
+        </tr>
+        <tr>
+          <td><strong>Device Intelligence</strong></td>
+          <td>Basic (cookie-based, easily bypassed)</td>
+          <td style="color: var(--accent); font-weight: 600;">Fingerprint + IMEI + behavioral</td>
+        </tr>
+        <tr>
+          <td><strong>Location Checks</strong></td>
+          <td>IP geolocation only (VPN defeats this)</td>
+          <td style="color: var(--accent); font-weight: 600;">Cell tower + IP + home base comparison</td>
+        </tr>
+        <tr>
+          <td><strong>Merchant Verification</strong></td>
+          <td>Till number only (no business validation)</td>
+          <td style="color: var(--accent); font-weight: 600;">KRA PIN + registration + dispute history</td>
+        </tr>
+        <tr>
+          <td><strong>False Positive Rate</strong></td>
+          <td>N/A (no proactive blocking)</td>
+          <td style="color: var(--accent); font-weight: 600;">&lt; 2% (multi-signal scoring)</td>
+        </tr>
+        <tr>
+          <td><strong>Customer Friction</strong></td>
+          <td>High (branch visits for disputes)</td>
+          <td style="color: var(--accent); font-weight: 600;">Low (silent verification, 85% invisible)</td>
+        </tr>
+        <tr>
+          <td><strong>Fraud Write-offs</strong></td>
+          <td>Sh760K+ (KCB admitted losses)</td>
+          <td style="color: var(--accent); font-weight: 600;">-80% reduction target</td>
+        </tr>
+        <tr>
+          <td><strong>Regulatory Reporting</strong></td>
+          <td>Reactive (report after fraud occurs)</td>
+          <td style="color: var(--accent); font-weight: 600;">Proactive (prevent + auto-report to CBK)</td>
+        </tr>
+        <tr>
+          <td><strong>Cross-Bank Intelligence</strong></td>
+          <td>None (siloed per bank)</td>
+          <td style="color: var(--accent); font-weight: 600;">Shared fraud patterns across all members</td>
+        </tr>
+        <tr>
+          <td><strong>Integration Effort</strong></td>
+          <td>N/A</td>
+          <td style="color: var(--accent); font-weight: 600;">One API call — 2 weeks per bank</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="grid-3" style="margin-top: 20px;">
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 48px; margin-bottom: 12px;">💰</div>
+        <div style="font-size: 24px; font-weight: 800; color: var(--accent);">Sh760K+</div>
+        <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">KCB fraud write-offs (single period)</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 48px; margin-bottom: 12px;">👥</div>
+        <div style="font-size: 24px; font-weight: 800; color: var(--danger);">60</div>
+        <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">KCB staff fired for fraud involvement</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 48px; margin-bottom: 12px;">📈</div>
+        <div style="font-size: 24px; font-weight: 800; color: var(--warning);">201</div>
+        <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Fraud incidents at KCB (reported)</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px;">
+    <div style="margin-bottom: 8px;"><strong>Thibitisha Bank-Side Demo v1.0</strong></div>
+    <div>Demonstrating real-time fraud prevention for Kenyan banks</div>
+  </div>
+</div>
+
+<script>
+  let currentScenario = 'normal';
+  let auditEntries = [];
+
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  function selectScenario(el, scenario) {
+    document.querySelectorAll('.demo-scenario').forEach(s => s.classList.remove('selected'));
+    el.classList.add('selected');
+    currentScenario = scenario;
+  }
+
+  function highlightStep(stepNum) {
+    const details = {
+      1: {
+        title: '🛡️ Defense at Step 1: Data Harvesting',
+        content: `<div style="margin-bottom: 12px;"><strong>Thibitisha cannot stop data harvesting directly.</strong></div><div style="font-size: 13px; color: var(--text-muted);">But Thibitisha makes stolen data useless. Even if a fraudster has your ID, password, and phone number, they cannot pass the Thibitisha check without controlling your <em>physical device</em> and being in your <em>usual location</em>.</div><div style="margin-top: 12px; padding: 12px; background: #E8F5E9; border-radius: 8px; font-size: 13px;">✓ <strong>Impact:</strong> Stolen credentials alone are no longer enough to commit fraud.</div>`
+      },
+      2: {
+        title: '🛡️ Defense at Step 2: Social Engineering',
+        content: `<div style="margin-bottom: 12px;"><strong>Thibitisha detects the SIM swap within minutes.</strong></div><div style="font-size: 13px; color: var(--text-muted);">When the fraudster convinces an agent to swap the SIM, Thibitisha's cross-MNO monitoring detects the swap event. Even if one MNO's records are manipulated (insider threat), Thibitisha checks all 4 MNOs and flags inconsistencies.</div><div style="margin-top: 12px; padding: 12px; background: #E8F5E9; border-radius: 8px; font-size: 13px;">✓ <strong>Impact:</strong> Insider SIM swaps are caught by cross-telco verification.</div>`
+      },
+      3: {
+        title: '🛡️ Defense at Step 3: SIM Swap Complete',
+        content: `<div style="margin-bottom: 12px;"><strong>This is Thibitisha's primary interception point.</strong></div><div style="font-size: 13px; color: var(--text-muted);">The moment the fraudster tries to use the swapped SIM for a bank transaction, Thibitisha queries all MNOs and discovers:<br/>• SIM was recently swapped<br/>• Device fingerprint doesn't match<br/>• Location is anomalous</div><div style="margin-top: 12px; padding: 12px; background: #E8F5E9; border-radius: 8px; font-size: 13px;">✓ <strong>Impact:</strong> Fraud is blocked BEFORE the OTP is ever sent.</div>`
+      },
+      4: {
+        title: '🛡️ Defense at Step 4: OTP Interception',
+        content: `<div style="margin-bottom: 12px;"><strong>With Thibitisha, this step never happens.</strong></div><div style="font-size: 13px; color: var(--text-muted);">Because the transaction was blocked at Step 3, the bank never sends the OTP. The fraudster can intercept all they want — there's nothing to intercept. The legitimate customer (whose original SIM is now dead) gets an alert: "Suspicious activity blocked on your account."</div><div style="margin-top: 12px; padding: 12px; background: #E8F5E9; border-radius: 8px; font-size: 13px;">✓ <strong>Impact:</strong> OTP interception becomes irrelevant.</div>`
+      },
+      5: {
+        title: '🛡️ Defense at Step 5: Fund Transfer',
+        content: `<div style="margin-bottom: 12px;"><strong>The transfer is prevented entirely.</strong></div><div style="font-size: 13px; color: var(--text-muted);">Instead of losing KSh 50,000–500,000, the customer loses nothing. The bank's fraud team receives a detailed alert with all signals (SIM swap time, device mismatch, location anomaly). The account can be temporarily frozen pending customer verification.</div><div style="margin-top: 12px; padding: 12px; background: #E8F5E9; border-radius: 8px; font-size: 13px;">✓ <strong>Impact:</strong> 100% of funds protected. Fraudster walks away empty-handed.</div>`
+      }
+    };
+
+    const d = details[stepNum];
+    document.getElementById('defense-detail').innerHTML = `
+      <div style="font-weight: 700; font-size: 16px; margin-bottom: 12px; color: var(--primary);">${d.title}</div>
+      ${d.content}
+    `;
+
+    document.querySelectorAll('.flow-step').forEach((el, i) => {
+      el.classList.remove('active');
+      if (i === stepNum - 1) el.classList.add('active');
+    });
+  }
+
+  function runBankSimulation() {
+    const btn = document.getElementById('sim-btn');
+    const resultCard = document.getElementById('sim-result-card');
+    const resultContent = document.getElementById('sim-result-content');
+    const riskAnalysis = document.getElementById('risk-analysis');
+    const customerNotification = document.getElementById('customer-notification');
+
+    btn.innerHTML = '<span class="spinner"></span> Simulating Transaction...';
+    btn.disabled = true;
+    resultCard.style.display = 'none';
+
+    setTimeout(() => {
+      let resultHtml = '';
+      let riskHtml = '';
+      let customerHtml = '';
+      let auditMsg = '';
+      let auditType = 'completed';
+
+      if (currentScenario === 'normal') {
+        resultHtml = `
+          <div style="text-align: center; margin-bottom: 16px;">
+            <span class="badge badge-safe" style="font-size: 14px; padding: 8px 20px;">✓ TRANSACTION APPROVED</span>
+          </div>
+          <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+            <div><strong>Customer:</strong> John Kamau (254701****01)</div>
+            <div><strong>Amount:</strong> KSh 5,000</div>
+            <div><strong>Recipient:</strong> Jane Ochieng (254722****45)</div>
+            <div><strong>Time:</strong> ${new Date().toLocaleTimeString('en-KE')}</div>
+          </div>
+          <div style="padding: 12px; background: #E8F5E9; border-radius: 10px; font-size: 13px;">
+            <strong>✓ Thibitisha Result:</strong> Risk Score 89 (LOW) — All signals green. OTP sent successfully.
+          </div>
+        `;
+        riskHtml = `
+          <div style="text-align: center; margin-bottom: 16px;">
+            <div style="font-size: 36px; font-weight: 800; color: var(--accent);">89</div>
+            <div style="font-size: 13px; color: var(--text-muted);">Risk Score — LOW</div>
+          </div>
+          <div class="risk-meter"><div class="risk-fill low" style="width: 8.9%;"></div></div>
+          <div class="signal-card"><div class="signal-header"><span class="signal-name">SIM Swap</span><span class="signal-status ok">✓ SAFE</span></div><div class="signal-detail">Last swap 145 days ago. No recent activity.</div></div>
+          <div class="signal-card"><div class="signal-header"><span class="signal-name">Device</span><span class="signal-status ok">✓ MATCH</span></div><div class="signal-detail">Known device. Same phone for 8 months.</div></div>
+          <div class="signal-card"><div class="signal-header"><span class="signal-name">Location</span><span class="signal-status ok">✓ NEARBY</span></div><div class="signal-detail">0.3km from home base. Westlands, Nairobi.</div></div>
+          <div class="signal-card"><div class="signal-header"><span class="signal-name">Velocity</span><span class="signal-status ok">✓ NORMAL</span></div><div class="signal-detail">3 transactions today. Within normal pattern.</div></div>
+        `;
+        customerHtml = `
+          <div class="phone-mockup"><div class="phone-screen"><div class="phone-notch"></div><div class="phone-body">
+            <div style="text-align: center; margin-bottom: 16px;">
+              <div style="font-size: 13px; color: var(--text-muted);">Transfer Successful</div>
+              <div style="font-size: 32px; font-weight: 800; color: var(--accent); margin: 8px 0;">KSh 5,000</div>
+              <div style="font-size: 13px;">to Jane Ochieng</div>
+            </div>
+            <div style="background: #E8F5E9; padding: 12px; border-radius: 10px; font-size: 12px; color: var(--accent); text-align: center;">
+              ✓ Verified by Thibitisha
+            </div>
+          </div></div></div>
+        `;
+        auditMsg = 'Transaction approved. Risk score: 89 (LOW). OTP delivered.';
+      } else if (currentScenario === 'simswap') {
+        resultHtml = `
+          <div style="text-align: center; margin-bottom: 16px;">
+            <span class="badge badge-danger" style="font-size: 14px; padding: 8px 20px;">🚫 TRANSACTION BLOCKED</span>
+          </div>
+          <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+            <div><strong>Customer:</strong> Mary Wanjiku (254733****22)</div>
+            <div><strong>Amount:</strong> KSh 45,000</div>
+            <div><strong>Recipient:</strong> Unknown M-PESA number</div>
+            <div><strong>Time:</strong> ${new Date().toLocaleTimeString('en-KE')}</div>
+          </div>
+          <div style="padding: 12px; background: #FFEBEE; border-radius: 10px; font-size: 13px; color: var(--danger);">
+            <strong>🚫 Thibitisha Result:</strong> Risk Score 892 (CRITICAL) — SIM swap detected 2 hours ago. No OTP sent. Account flagged.
+          </div>
+        `;
+        riskHtml = `
+          <div style="text-align: center; margin-bottom: 16px;">
+            <div style="font-size: 36px; font-weight: 800; color: var(--danger);">892</div>
+            <div style="font-size: 13px; color: var(--text-muted);">Risk Score — CRITICAL</div>
+          </div>
+          <div class="risk-meter"><div class="risk-fill critical" style="width: 89.2%;"></div></div>
+          <div class="signal-card" style="border-color: var(--danger);"><div class="signal-header"><span class="signal-name">SIM Swap</span><span class="signal-status danger">🚨 TODAY</span></div><div class="signal-detail" style="color: var(--danger); font-weight: 600;">Swapped 2 hours ago at 9:15 AM. Airtel line compromised.</div></div>
+          <div class="signal-card" style="border-color: var(--danger);"><div class="signal-header"><span class="signal-name">Device</span><span class="signal-status danger">✕ MISMATCH</span></div><div class="signal-detail" style="color: var(--danger); font-weight: 600;">Unknown device. IMEI never seen before.</div></div>
+          <div class="signal-card" style="border-color: var(--danger);"><div class="signal-header"><span class="signal-name">Location</span><span class="signal-status danger">✕ ANOMALY</span></div><div class="signal-detail" style="color: var(--danger); font-weight: 600;">450km from home. Mombasa vs usual Nairobi.</div></div>
+          <div class="signal-card"><div class="signal-header"><span class="signal-name">Velocity</span><span class="signal-status warn">⚠ HIGH</span></div><div class="signal-detail">12 transactions attempted. KSh 187,000 total.</div></div>
+        `;
+        customerHtml = `
+          <div class="phone-mockup"><div class="phone-screen"><div class="phone-notch"></div><div class="phone-body">
+            <div style="text-align: center; margin-bottom: 16px;">
+              <div style="font-size: 48px; margin-bottom: 8px;">🚫</div>
+              <div style="font-size: 18px; font-weight: 800; color: var(--danger);">Transaction Blocked</div>
+            </div>
+            <div style="background: #FFEBEE; padding: 14px; border-radius: 10px; font-size: 13px; color: var(--danger); margin-bottom: 12px;">
+              <strong>Security Alert:</strong> We detected suspicious activity on your account. This transaction has been blocked to protect your funds.
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+              If this was you, please visit your nearest branch or call 0700 000 000.
+            </div>
+            <button class="phone-btn phone-btn-secondary">Contact Support</button>
+          </div></div></div>
+        `;
+        auditMsg = 'CRITICAL: Transaction blocked. SIM swap detected. Account flagged for review.';
+        auditType = 'failed';
+      } else if (currentScenario === 'newdevice') {
+        resultHtml = `
+          <div style="text-align: center; margin-bottom: 16px;">
+            <span class="badge badge-warn" style="font-size: 14px; padding: 8px 20px;">⚠ CHALLENGE REQUIRED</span>
+          </div>
+          <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+            <div><strong>Customer:</strong> Peter Njoroge (254722****88)</div>
+            <div><strong>Action:</strong> Mobile banking login</div>
+            <div><strong>Device:</strong> Samsung Galaxy A54 (NEW)</div>
+            <div><strong>Time:</strong> ${new Date().toLocaleTimeString('en-KE')}</div>
+          </div>
+          <div style="padding: 12px; background: #FFF3E0; border-radius: 10px; font-size: 13px; color: var(--warning);">
+            <strong>⚠ Thibitisha Result:</strong> Risk Score 412 (MEDIUM) — New device detected. OTP sent + push alert issued.
+          </div>
+        `;
+        riskHtml = `
+          <div style="text-align: center; margin-bottom: 16px;">
+            <div style="font-size: 36px; font-weight: 800; color: var(--warning);">412</div>
+            <div style="font-size: 13px; color: var(--text-muted);">Risk Score — MEDIUM</div>
+          </div>
+          <div class="risk-meter"><div class="risk-fill medium" style="width: 41.2%;"></div></div>
+          <div class="signal-card"><div class="signal-header"><span class="signal-name">SIM Swap</span><span class="signal-status ok">✓ SAFE</span></div><div class="signal-detail">No swap in 90 days.</div></div>
+          <div class="signal-card" style="border-color: var(--warning);"><div class="signal-header"><span class="signal-name">Device</span><span class="signal-status warn">⚠ NEW</span></div><div class="signal-detail" style="color: var(--warning); font-weight: 600;">New device fingerprint. First time login from this phone.</div></div>
+          <div class="signal-card"><div class="signal-header"><span class="signal-name">Location</span><span class="signal-status ok">✓ NEARBY</span></div><div class="signal-detail">Same home location. No anomaly.</div></div>
+          <div class="signal-card"><div class="signal-header"><span class="signal-name">Velocity</span><span class="signal-status ok">✓ NORMAL</span></div><div class="signal-detail">Normal login pattern.</div></div>
+        `;
+        customerHtml = `
+          <div class="phone-mockup"><div class="phone-screen"><div class="phone-notch"></div><div class="phone-body">
+            <div style="text-align: center; margin-bottom: 12px;">
+              <div style="font-size: 13px; color: var(--text-muted);">Login from new device</div>
+              <div style="font-size: 16px; font-weight: 700; margin: 8px 0;">Samsung Galaxy A54</div>
+            </div>
+            <div style="background: #FFF3E0; padding: 12px; border-radius: 10px; font-size: 12px; color: var(--warning); margin-bottom: 12px;">
+              ⚠ We noticed a login from a new device. An OTP has been sent to your registered number.
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Enter OTP:</div>
+            <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 12px;">
+              <div style="width: 40px; height: 48px; border: 2px solid var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700;">3</div>
+              <div style="width: 40px; height: 48px; border: 2px solid var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700;">8</div>
+              <div style="width: 40px; height: 48px; border: 2px solid var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700;">2</div>
+              <div style="width: 40px; height: 48px; border: 2px solid var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700;">9</div>
+            </div>
+            <button class="phone-btn phone-btn-primary">Verify</button>
+          </div></div></div>
+        `;
+        auditMsg = 'Login challenged. New device detected. OTP sent with additional alert.';
+      } else {
+        resultHtml = `
+          <div style="text-align: center; margin-bottom: 16px;">
+            <span class="badge badge-safe" style="font-size: 14px; padding: 8px 20px;">✓ MERCHANT PAYMENT APPROVED</span>
+          </div>
+          <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+            <div><strong>Customer:</strong> Grace Muthoni (254701****33)</div>
+            <div><strong>Amount:</strong> KSh 12,000</div>
+            <div><strong>Merchant:</strong> ABC Electronics Ltd (Till: 123456)</div>
+            <div><strong>Time:</strong> ${new Date().toLocaleTimeString('en-KE')}</div>
+          </div>
+          <div style="padding: 12px; background: #E8F5E9; border-radius: 10px; font-size: 13px;">
+            <strong>✓ Thibitisha Result:</strong> Risk Score 67 (LOW). Merchant: PLATINUM verified. Safe to proceed.
+          </div>
+        `;
+        riskHtml = `
+          <div style="text-align: center; margin-bottom: 16px;">
+            <div style="font-size: 36px; font-weight: 800; color: var(--accent);">67</div>
+            <div style="font-size: 13px; color: var(--text-muted);">Risk Score — LOW</div>
+          </div>
+          <div class="risk-meter"><div class="risk-fill low" style="width: 6.7%;"></div></div>
+          <div class="signal-card"><div class="signal-header"><span class="signal-name">SIM Swap</span><span class="signal-status ok">✓ SAFE</span></div><div class="signal-detail">No swap in 90 days.</div></div>
+          <div class="signal-card"><div class="signal-header"><span class="signal-name">Device</span><span class="signal-status ok">✓ MATCH</span></div><div class="signal-detail">Known device.</div></div>
+          <div class="signal-card"><div class="signal-header"><span class="signal-name">Merchant</span><span class="signal-status ok">✓ PLATINUM</span></div><div class="signal-detail">ABC Electronics Ltd. Verified since Jan 2024. Low dispute rate.</div></div>
+          <div class="signal-card"><div class="signal-header"><span class="signal-name">Location</span><span class="signal-status ok">✓ NEARBY</span></div><div class="signal-detail">Near merchant location. Westlands.</div></div>
+        `;
+        customerHtml = `
+          <div class="phone-mockup"><div class="phone-screen"><div class="phone-notch"></div><div class="phone-body">
+            <div style="text-align: center; margin-bottom: 12px;">
+              <div style="font-size: 13px; color: var(--text-muted);">Paying</div>
+              <div style="font-size: 28px; font-weight: 800; margin: 4px 0;">KSh 12,000</div>
+              <div style="font-size: 13px;">to ABC Electronics Ltd</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #E0E0E0, #BDBDBD); color: #424242; padding: 10px; border-radius: 10px; text-align: center; font-size: 12px; font-weight: 700; margin-bottom: 10px;">
+              🏆 PLATINUM MERCHANT
+            </div>
+            <div style="background: #E8F5E9; padding: 10px; border-radius: 10px; font-size: 12px; color: var(--accent); text-align: center; margin-bottom: 12px;">
+              ✓ Verified by Thibitisha
+            </div>
+            <button class="phone-btn phone-btn-primary">Confirm Payment</button>
+          </div></div></div>
+        `;
+        auditMsg = 'Merchant payment approved. Merchant: PLATINUM. Risk score: 67 (LOW).';
+      }
+
+      resultContent.innerHTML = resultHtml;
+      resultCard.style.display = 'block';
+      riskAnalysis.innerHTML = riskHtml;
+      customerNotification.innerHTML = customerHtml;
+
+      // Add to audit log
+      const time = new Date().toLocaleTimeString('en-KE', {hour: '2-digit', minute:'2-digit'});
+      const auditLog = document.getElementById('audit-log');
+      const newEntry = document.createElement('div');
+      newEntry.className = `timeline-item ${auditType}`;
+      newEntry.innerHTML = `
+        <div class="timeline-dot"></div>
+        <div class="timeline-text"><strong>${currentScenario === 'simswap' ? 'CRITICAL ALERT' : 'Transaction processed'}</strong> — ${auditMsg}</div>
+        <div class="timeline-time">${time}</div>
+      `;
+      auditLog.insertBefore(newEntry, auditLog.firstChild);
+
+      btn.innerHTML = '<span>▶ Run Transaction Simulation</span>';
+      btn.disabled = false;
+    }, 1500);
+  }
+</script>
+
+</body>
+</html>

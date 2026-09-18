@@ -1,0 +1,86 @@
+[
+  {
+    "id": "VRF-20260915-33294b",
+    "scenario": "merchant",
+    "institution": "Demo Bank",
+    "amount": 12000,
+    "createdAt": "2026-09-15T16:20:41.241Z",
+    "decision": "PROCEED",
+    "riskScore": 67,
+    "tier": "LOW",
+    "signals": {
+      "simSwap": {
+        "status": "SAFE",
+        "detail": "No swap in 90 days"
+      },
+      "merchant": {
+        "status": "PLATINUM",
+        "detail": "ABC Electronics Ltd"
+      },
+      "device": {
+        "status": "MATCH",
+        "detail": "Known device"
+      },
+      "location": {
+        "status": "NEARBY",
+        "detail": "Near merchant location"
+      }
+    }
+  },
+  {
+    "id": "VRF-20260915-635ae6",
+    "scenario": "simswap",
+    "institution": "Demo Bank",
+    "amount": 45000,
+    "createdAt": "2026-09-15T16:20:11.161Z",
+    "decision": "BLOCK",
+    "riskScore": 892,
+    "tier": "CRITICAL",
+    "signals": {
+      "simSwap": {
+        "status": "TODAY",
+        "detail": "Swapped 2 hours ago"
+      },
+      "device": {
+        "status": "MISMATCH",
+        "detail": "Unknown device detected"
+      },
+      "location": {
+        "status": "ANOMALY",
+        "detail": "450km from home base"
+      },
+      "velocity": {
+        "status": "HIGH",
+        "detail": "12 transactions attempted today"
+      }
+    }
+  },
+  {
+    "id": "VRF-20260915-48d97f",
+    "scenario": "safe",
+    "institution": "Demo Bank",
+    "amount": 5000,
+    "createdAt": "2026-09-15T15:38:32.510Z",
+    "decision": "PROCEED",
+    "riskScore": 145,
+    "tier": "LOW",
+    "signals": {
+      "simSwap": {
+        "status": "SAFE",
+        "detail": "Last swap: 59 days ago"
+      },
+      "device": {
+        "status": "MATCH",
+        "detail": "Known device fingerprint"
+      },
+      "location": {
+        "status": "NEARBY",
+        "detail": "0.3km from home base"
+      },
+      "velocity": {
+        "status": "NORMAL",
+        "detail": "3 transactions today"
+      }
+    }
+  }
+]
